@@ -77,9 +77,7 @@ async def close_tutorial_popup(page):
         print("✅ No tutorial popup detected.")
 
 async def getTypingPause():
-    random_pause = random.uniform(50, 200)
-    time.sleep(random_pause)
-    return random_pause
+    return random.uniform(40, 180)
 
 async def typeText(locator, page):
     text_content = await locator.inner_text()
@@ -87,7 +85,7 @@ async def typeText(locator, page):
     print("\n--- Text to type ---")
     print(text_content)
     print("--------------------")
-    await page.keyboard.type(text_content, delay=getTypingPause())
+    await page.keyboard.type(text_content, delay=await getTypingPause())
 
 async def main(trainingTime, attempts):
     async with async_playwright() as p:
