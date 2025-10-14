@@ -9,6 +9,42 @@ mailAdress = "Z125513@shibaura-it.ac.jp"
 trainingTime = 0
 attempts = 5
 
+surroundingKeysMap= {
+    'q': ['w'],
+    'w': ['q', 'e'],
+    'e': ['w', 'r'],
+    'r': ['e', 't'],
+    't': ['r', 'z'],
+    'z': ['t', 'u'],
+    'u': ['z', 'i'],
+    'i': ['u', 'o'],
+    'o': ['i', 'p'],
+    'p': ['o', 'ü'],
+    'ü': ['p', 'è'],
+    'è': ['ü'],
+
+    # Second row
+    'a': ['s'],
+    's': ['a', 'd'],
+    'd': ['s', 'f'],
+    'f': ['d', 'g'],
+    'g': ['f', 'h'],
+    'h': ['g', 'j'],
+    'j': ['h', 'k'],
+    'k': ['j', 'l'],
+    'l': ['k', 'ö'],
+    'ö': ['l', 'ä'],
+    'ä': ['ö'],
+
+    # Third row
+    'y': ['x'],
+    'x': ['y', 'c'],
+    'c': ['x', 'v'],
+    'v': ['c', 'b'],
+    'b': ['v', 'n'],
+    'n': ['b', 'm'],
+    'm': ['n'],
+}
 
 def random_user_agent():
     user_agents = [
@@ -77,7 +113,7 @@ async def close_tutorial_popup(page):
         print("✅ No tutorial popup detected.")
 
 async def getTypingPause():
-    return random.uniform(40, 180)
+    return random.uniform(30, 300)
 
 async def typeText(locator, page):
     text_content = await locator.inner_text()
@@ -85,7 +121,31 @@ async def typeText(locator, page):
     print("\n--- Text to type ---")
     print(text_content)
     print("--------------------")
-    await page.keyboard.type(text_content, delay=await getTypingPause())
+
+    count: int = 0
+    wasFalse: bool = False
+    for char in text_content:
+        isFalsePress: bool = random.random() < 0.0  # change false probability
+        if isFalsePress and char != ' ':
+            charCandidate = await getFalseKey(char)
+            if count != 0 or count == len(text_content) - 1:
+                if charCandidate != text_content[count - 1]:
+                    if text_content[count + 1] != ' ' and text_content[count - 1] != ' ':
+                        if not wasFalse:
+                            char = charCandidate
+                            print(char)
+                            wasFalse = True
+                        else:
+                            wasFalse = False
+        await page.keyboard.type(char, delay=await getTypingPause())
+        count += 1
+
+
+
+async def getFalseKey(char):
+    possibleFalseKeys = surroundingKeysMap[char]
+    return random.choice(possibleFalseKeys)
+
 
 async def main(trainingTime, attempts):
     async with async_playwright() as p:
