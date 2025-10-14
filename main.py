@@ -7,7 +7,6 @@ import os
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 # Config:
-TRAINING_MINUTES = 10
 AUTH_FILE = "auth_state.json"
 
 surroundingKeysMap= {
@@ -61,7 +60,7 @@ async def close_tutorial_popup(page):
         while True:
             try:
                 await page.click("text=Next", timeout=1000)
-                print("➡️ Clicked 'Next'")
+                print("Clicked 'Next'")
                 await random_pause()
             except PlaywrightTimeoutError:
                 try:
@@ -69,7 +68,7 @@ async def close_tutorial_popup(page):
                     print("🧹 Closed tutorial popup.")
                     break
                 except PlaywrightTimeoutError:
-                    print("⚠️ No 'Next' or 'Close' found — exiting loop.")
+                    print("No 'Next' or 'Close' found — exiting loop.")
                     break
     except PlaywrightTimeoutError:
         print("No tutorial popup detected.")
@@ -94,9 +93,9 @@ async def type_text(locator, page):
             false_key = await get_false_key(char)
             if false_key:
                 await page.keyboard.type(false_key, delay=await get_typing_pause())
-                await asyncio.sleep(random.uniform(0.1, 0.3)) # Pause after mistype
+                await asyncio.sleep(random.uniform(0.05, 0.3)) # Pause after mistype
                 await page.keyboard.press("Backspace")
-                await asyncio.sleep(random.uniform(0.1, 0.3)) # Pause after correction
+                await asyncio.sleep(random.uniform(0.05, 0.2)) # Pause after correction
 
         await page.keyboard.type(char, delay=await get_typing_pause())
 
@@ -107,18 +106,14 @@ async def main():
         return
 
     blocked_domains = [
-        "googlesyndication.com",
-        "google-analytics.com",
-        "doubleclick.net",
-        "adservice.google.com",
-        "googletagservices.com",
-        "c.amazon-adsystem.com",
+        "googlesyndication.com", "google-analytics.com", "doubleclick.net",
+        "adservice.google.com", "googletagservices.com", "c.amazon-adsystem.com",
         "ads.pubmatic.com",
     ]
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
-            headless=True, # Use headless mode for automation
+            headless=True,
             args=["--disable-blink-features=AutomationControlled"]
         )
         context = await browser.new_context(
@@ -135,20 +130,24 @@ async def main():
         await page.goto("https://www.keybr.com/", wait_until="networkidle")
         await close_tutorial_popup(page)
 
+        training_minutes = random.randint(5, 10)
+        print(f"Starting a training session for {training_minutes} minutes.")
+
         locator = page.locator("main > section > div:nth-of-type(2) > div > div")
         await locator.wait_for(state="visible")
         await locator.click()
-        print("✅ Clicked on the typing area!")
+        print("Clicked on the typing area!")
 
         start_time = time.time()
-        duration_seconds = TRAINING_MINUTES * 60
+        duration_seconds = training_minutes * 60
 
         while (time.time() - start_time) < duration_seconds:
-            print(f"Time remaining: {int((duration_seconds - (time.time() - start_time)) / 60)} minutes")
+            remaining_seconds = duration_seconds - (time.time() - start_time)
+            print(f"⏳ Time remaining: {int(remaining_seconds / 60)} minutes")
             await type_text(locator, page)
             await random_pause()
 
-        print(f"Completed {TRAINING_MINUTES} minutes of training.")
+        print(f"Completed {training_minutes} minutes of training.")
         await browser.close()
 
 if __name__ == "__main__":

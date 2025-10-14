@@ -208,3 +208,5 @@ __marimo__/
 
 # Config.py
 config.py
+
+auth_state.json
