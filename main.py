@@ -29,12 +29,12 @@ async def login(page):
     page.goto('https://www.keybr.com/login', wait_until='load')
 
     await page.click("text=Sign-In", timeout=1000)
-    random_pause()
+    await random_pause()
 
     await page.get_by_placeholder("Your e-mail address").fill(mailAdress, timeout=1000)
     print("filled in the mail adress")
 
-    random_pause()
+    await random_pause()
     page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
     await page.click("text=Send a sign-in link", timeout=1000)
     print("Requested a Sign-in link")
@@ -43,7 +43,7 @@ async def login(page):
 
     await page.goto(loginLink, timeout=1000)
 
-def random_pause():
+async def random_pause():
     random_pause = random.uniform(0.5, 2)
     time.sleep(random_pause)
 
@@ -89,11 +89,28 @@ async def typeText(locator, page):
 
 async def main(trainingTime, attempts):
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)  # headless=False = shows the browser
-        page = await browser.new_page()
+        browser = await p.chromium.launch(
+            headless=False,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-extensions",
+                "--disable-plugins",
+            ]
+        )
+
+        # Create context with viewport and user agent
+        context = await browser.new_context(
+            viewport={"width": 720, "height": 720},
+            user_agent=random_user_agent()
+        )
+
+        page = await context.new_page()
 
         # 1️⃣ Go to keybr.com
-        await page.goto("https://www.keybr.com/")
+        await page.goto("https://www.keybr.com/", wait_until="networkidle")
 
         await close_tutorial_popup(page)
 
@@ -117,14 +134,16 @@ async def main(trainingTime, attempts):
 
         while True:
             if attempts != 0:
+                print("Attempt nr: " + str(attempts))
                 await typeText(locator, page)
                 attempts -= 1
 
-            if trainingTime >= 0:
+            if trainingTime > 0:
                 await typeText(locator, page)
-                await asyncio.sleep(50)
                 trainingTime -= 50
-            if attempts == 0 & trainingTime == 0: break
+            if attempts == 0 and trainingTime == 0: break
+
+            await random_pause()
 
     # 7️⃣ Optional: keep browser open for inspection
         await asyncio.sleep(5)
