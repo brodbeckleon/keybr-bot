@@ -1,6 +1,7 @@
 import asyncio
 import random
 import time
+from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
@@ -19,9 +20,7 @@ surroundingKeysMap= {
     'u': ['z', 'i'],
     'i': ['u', 'o'],
     'o': ['i', 'p'],
-    'p': ['o', 'ü'],
-    'ü': ['p', 'è'],
-    'è': ['ü'],
+    'p': ['o'],
 
     # Second row
     'a': ['s'],
@@ -32,9 +31,7 @@ surroundingKeysMap= {
     'h': ['g', 'j'],
     'j': ['h', 'k'],
     'k': ['j', 'l'],
-    'l': ['k', 'ö'],
-    'ö': ['l', 'ä'],
-    'ä': ['ö'],
+    'l': ['k'],
 
     # Third row
     'y': ['x'],
@@ -125,12 +122,12 @@ async def typeText(locator, page):
     count: int = 0
     wasFalse: bool = False
     for char in text_content:
-        isFalsePress: bool = random.random() < 0.0  # change false probability
+        isFalsePress: bool = random.random() < 0.1  # change false probability
         if isFalsePress and char != ' ':
             charCandidate = await getFalseKey(char)
             if count != 0 or count == len(text_content) - 1:
                 if charCandidate != text_content[count - 1]:
-                    if text_content[count + 1] != ' ' and text_content[count - 1] != ' ':
+                    if text_content[count - 1] == ' ':
                         if not wasFalse:
                             char = charCandidate
                             print(char)
@@ -148,23 +145,33 @@ async def getFalseKey(char):
 
 
 async def main(trainingTime, attempts):
+    # List of common ad and tracking domains to block
+    blocked_domains = [
+        "googlesyndication.com",
+        "google-analytics.com",
+        "doubleclick.net",
+        "adservice.google.com",
+        "googletagservices.com",
+        "c.amazon-adsystem.com",
+        "ads.pubmatic.com",
+    ]
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=False,
             args=[
                 "--disable-blink-features=AutomationControlled",
-                "--disable-dev-shm-usage",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--disable-extensions",
-                "--disable-plugins",
             ]
         )
-
-        # Create context with viewport and user agent
         context = await browser.new_context(
-            viewport={"width": 720, "height": 720},
+            viewport={"width": 1200, "height": 800},
             user_agent=random_user_agent()
+        )
+
+        # Block ad domains
+        await context.route(
+            lambda url: urlparse(url).hostname and any(domain in urlparse(url).hostname for domain in blocked_domains),
+            lambda route: route.abort()
         )
 
         page = await context.new_page()
@@ -177,10 +184,9 @@ async def main(trainingTime, attempts):
         #await login(page)
 
         # 2️⃣ Wait until the typing area loads
-        # (This ensures the DOM structure is ready)
         await page.wait_for_selector("main > section")
 
-        # 3️⃣ Define your structural locator (Option A)
+        # 3️⃣ Define your structural locator
         locator = page.locator(
             "main > section > div:nth-of-type(2) > div > div"
         )
@@ -192,20 +198,22 @@ async def main(trainingTime, attempts):
         await locator.click()
         print("✅ Clicked on the typing area!")
 
-        while True:
-            if attempts != 0:
+        while attempts > 0 or trainingTime > 0:
+            if attempts > 0:
                 print("Attempt nr: " + str(attempts))
                 await typeText(locator, page)
                 attempts -= 1
-
-            if trainingTime > 0:
+            elif trainingTime > 0:
+                # This part will run after all attempts are used
                 await typeText(locator, page)
-                trainingTime -= 50
-            if attempts == 0 and trainingTime == 0: break
+                trainingTime -= 50 # Assuming typeText takes about 50s
+
+            if attempts <= 0 and trainingTime <= 0:
+                break
 
             await random_pause()
 
-    # 7️⃣ Optional: keep browser open for inspection
+        # 7️⃣ Optional: keep browser open for inspection
         await asyncio.sleep(5)
         await browser.close()
 
