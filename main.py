@@ -56,7 +56,7 @@ async def random_pause():
 async def close_tutorial_popup(page):
     try:
         await page.wait_for_selector("text=Next", timeout=3000)
-        print("Tutorial popup detected. Navigating...")
+        print("Walking through the tutorial")
         while True:
             try:
                 await page.click("text=Next", timeout=1000)
@@ -65,13 +65,13 @@ async def close_tutorial_popup(page):
             except PlaywrightTimeoutError:
                 try:
                     await page.click("text=Close", timeout=1000)
-                    print("🧹 Closed tutorial popup.")
+                    print("Tutorial closed")
                     break
                 except PlaywrightTimeoutError:
                     print("No 'Next' or 'Close' found — exiting loop.")
                     break
     except PlaywrightTimeoutError:
-        print("No tutorial popup detected.")
+        print("No Tutorial detected")
 
 async def get_typing_pause():
     return random.uniform(30, 300)
@@ -88,14 +88,14 @@ async def type_text(locator, page):
     print(f"\n--- Text to type ---\n{text_content}\n--------------------")
 
     for i, char in enumerate(text_content):
-        is_false_press = random.random() < 0.15
+        is_false_press = random.random() < 0.05
         if is_false_press and char.isalpha() and char in surroundingKeysMap:
             false_key = await get_false_key(char)
             if false_key:
                 await page.keyboard.type(false_key, delay=await get_typing_pause())
                 await asyncio.sleep(random.uniform(0.05, 0.3)) # Pause after mistype
                 await page.keyboard.press("Backspace")
-                await asyncio.sleep(random.uniform(0.05, 0.2)) # Pause after correction
+                await asyncio.sleep(random.uniform(0.05, 0.1)) # Pause after correction
 
         await page.keyboard.type(char, delay=await get_typing_pause())
 
@@ -130,20 +130,20 @@ async def main():
         await page.goto("https://www.keybr.com/", wait_until="networkidle")
         await close_tutorial_popup(page)
 
-        training_minutes = random.randint(5, 10)
+        training_minutes = random.randint(7, 30)
         print(f"Starting a training session for {training_minutes} minutes.")
 
         locator = page.locator("main > section > div:nth-of-type(2) > div > div")
         await locator.wait_for(state="visible")
         await locator.click()
-        print("Clicked on the typing area!")
+        print("Clicked on the typing area")
 
         start_time = time.time()
         duration_seconds = training_minutes * 60
 
         while (time.time() - start_time) < duration_seconds:
             remaining_seconds = duration_seconds - (time.time() - start_time)
-            print(f"⏳ Time remaining: {int(remaining_seconds / 60)} minutes")
+            print(f"Time remaining: {int(remaining_seconds / 60)} minutes")
             await type_text(locator, page)
             await random_pause()
 
